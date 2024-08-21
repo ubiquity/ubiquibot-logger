@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/ubiquity/ubiquibot-logger/compare/v1.3.0...v1.3.1) (2024-08-21)
+
+
+### Bug Fixes
+
+* always return a LogReturn instead of null ([b46b77d](https://github.com/ubiquity/ubiquibot-logger/commit/b46b77d2198746d4484b45b8eff45de2865567af))
+
 ## [1.3.0](https://github.com/ubiquity/ubiquibot-logger/compare/v1.2.0...v1.3.0) (2024-07-10)
 
 
