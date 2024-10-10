@@ -1,3 +1,3 @@
-# `@ubiquity-dao/ubiquibot-logger`
+# `@ubiquity-os/ubiquity-os-logger`
 
-Ubiquity logger NPM module.
+UbiquityOS logger NPM module.
