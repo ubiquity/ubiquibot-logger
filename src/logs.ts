@@ -1,10 +1,30 @@
+import { SupabaseClient } from "@supabase/supabase-js";
 import { LOG_LEVEL } from "./constants";
 import { PrettyLogs } from "./pretty-logs";
 import { LogParams, LogReturn, Metadata, LogLevel } from "./types/log-types";
 
+type SupabaseConfig = {
+  supabaseClient: SupabaseClient;
+  levelsToLog: LogLevel[];
+};
+
 export class Logs {
   private _maxLevel = -1;
   static console: PrettyLogs;
+  private _supabase: SupabaseClient | null = null;
+  private _pluginName: string;
+  private _levelsToLog: LogLevel[] = [];
+
+  constructor(level: LogLevel, pluginName: string, postingConfig?: SupabaseConfig) {
+    this._maxLevel = this._getNumericLevel(level);
+    Logs.console = new PrettyLogs();
+    this._pluginName = pluginName;
+
+    if (postingConfig) {
+      this._levelsToLog = postingConfig.levelsToLog;
+      this._supabase = postingConfig.supabaseClient;
+    }
+  }
 
   private _log({ level, consoleLog, logMessage, metadata, type }: LogParams): LogReturn {
     // filter out more verbose logs according to maxLevel set in config
@@ -12,7 +32,7 @@ export class Logs {
       consoleLog(logMessage, metadata);
     }
 
-    return new LogReturn(
+    const log = new LogReturn(
       {
         raw: logMessage,
         diff: this._diffColorCommentMessage(type, logMessage),
@@ -21,6 +41,12 @@ export class Logs {
       },
       metadata
     );
+
+    if (this._supabase && this._levelsToLog.includes(level)) {
+      this._logToSupabase(log).catch(this.error);
+    }
+
+    return log;
   }
 
   private _addDiagnosticInformation(metadata?: Metadata) {
@@ -92,14 +118,14 @@ export class Logs {
 
   public fatal(log: string, metadata?: Metadata): LogReturn {
     if (!metadata) {
-      metadata = Logs.convertErrorsIntoObjects(new Error(log)) as Metadata;
+      metadata = Logs.convertErrorsIntoObjects(new Error(log));
       const stack = metadata.stack as string[];
       stack.splice(1, 1);
       metadata.stack = stack;
     }
 
     if (metadata instanceof Error) {
-      metadata = Logs.convertErrorsIntoObjects(metadata) as Metadata;
+      metadata = Logs.convertErrorsIntoObjects(metadata);
       const stack = metadata.stack as string[];
       stack.splice(1, 1);
       metadata.stack = stack;
@@ -124,11 +150,6 @@ export class Logs {
       metadata,
       type: "verbose",
     });
-  }
-
-  constructor(logLevel: LogLevel) {
-    this._maxLevel = this._getNumericLevel(logLevel);
-    Logs.console = new PrettyLogs();
   }
 
   private _diffColorCommentMessage(type: string, message: string) {
@@ -183,7 +204,8 @@ export class Logs {
         return -1;
     }
   }
-  static convertErrorsIntoObjects(obj: unknown): Metadata | unknown {
+
+  static convertErrorsIntoObjects(obj: unknown): Metadata {
     // this is a utility function to render native errors in the console, the database, and on GitHub.
     if (obj instanceof Error) {
       return {
@@ -197,6 +219,28 @@ export class Logs {
         obj[key] = this.convertErrorsIntoObjects(obj[key]);
       });
     }
-    return obj;
+    return obj as Metadata;
+  }
+
+  private async _logToSupabase(log: LogReturn) {
+    if (!this._supabase) {
+      return;
+    }
+    try {
+      const { data, error } = await this._supabase.from("logs").insert([
+        {
+          log: log.logMessage.raw,
+          level: log.logMessage.level,
+          metadata: { ...log.metadata, caller: this._pluginName },
+        },
+      ]);
+      if (error) {
+        throw error;
+      }
+      return data;
+    } catch (err) {
+      console.error("Error logging to Supabase:", err);
+      throw err;
+    }
   }
 }
