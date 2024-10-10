@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.2](https://github.com/ubiquity-os/ubiquity-os-logger/compare/v1.3.1...v1.3.2) (2024-10-10)
+
+
+### Bug Fixes
+
+* update README.md ([3fbbd74](https://github.com/ubiquity-os/ubiquity-os-logger/commit/3fbbd74169136b8c7d32bc202f6192a275728687))
+
 ## [1.3.1](https://github.com/ubiquity-os/ubiquity-os-logger/compare/v1.3.0...v1.3.1) (2024-08-21)
 
 
